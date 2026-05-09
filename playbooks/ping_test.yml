@@ -1,0 +1,48 @@
+---
+- name: MojaveOps | Ping test and basic health checks
+  hosts: all
+  gather_facts: false
+  become: false
+
+  tasks:
+    - name: Ping hosts (Ansible connectivity)
+      ansible.builtin.ping:
+
+    - name: Show remote hostname
+      ansible.builtin.command: hostname
+      register: hostname_out
+      changed_when: false
+
+    - name: Show remote kernel (uname -a)
+      ansible.builtin.command: uname -a
+      register: uname_out
+      changed_when: false
+
+    - name: Show default route (if ip is available)
+      ansible.builtin.shell: |
+        if command -v ip >/dev/null 2>&1; then
+          ip route | awk '/default/ {print $0}'
+        else
+          echo "ip command not found"
+        fi
+      register: route_out
+      changed_when: false
+
+    - name: DNS resolution check (if getent is available)
+      ansible.builtin.shell: |
+        if command -v getent >/dev/null 2>&1; then
+          getent hosts example.com | head -n 1
+        else
+          echo "getent not found"
+        fi
+      register: dns_out
+      changed_when: false
+
+    - name: Summary (per-host)
+      ansible.builtin.debug:
+        msg:
+          - "host={{ inventory_hostname }}"
+          - "hostname={{ hostname_out.stdout | default('n/a') }}"
+          - "uname={{ uname_out.stdout | default('n/a') }}"
+          - "default_route={{ route_out.stdout | default('n/a') }}"
+          - "dns_example={{ dns_out.stdout | default('n/a') }}"
